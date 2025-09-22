@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Página Secreta</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        /* CSS se ha movido aquí para un solo archivo */
+        :root {
+            --color-primary: #FFC233;
+            --color-secondary: #F7B500;
+            --color-dark: #1a1a2e;
+            --color-text-light: #f4f4f4;
+            --color-accent: #ff8c42;
+            --color-envelope: #ffebcd;
+            --color-paper: #fffaf0;
+            --color-paper-text: #333;
+        }
+
+        body {
+            font-family: 'Noto Sans', sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: var(--color-dark);
+            color: var(--color-text-light);
+            transition: background-color 0.8s ease-in-out;
+        }
+
+        .view {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            opacity: 1;
+            transition: opacity 0.8s ease-in-out;
+            will-change: opacity, transform;
+            z-index: 10;
+        }
+
+        .view.hidden {
+            pointer-events: none;
+            opacity: 0;
+            transform: scale(0.95);
+            visibility: hidden;
+        }
+
+        /* Gate View */
+        #gate-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: -1;
+        }
+
+        .gate-content {
+            text-align: center;
+            z-index: 1;
+        }
+
+        .gate-title {
+            font-size: clamp(1.5rem, 5vw, 2.5rem);
+            margin-bottom: 2rem;
+            letter-spacing: 2px;
+            color: var(--color-text-light);
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+        }
+
+        #code-form {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .code-input {
+            width: 150px;
+            height: 50px;
+            font-size: 1.5rem;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            color: var(--color-text-light);
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .code-input:focus {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: var(--color-primary);
+            box-shadow: 0 0 15px var(--color-primary);
+        }
+
+        .code-button {
+            width: 50px;
+            height: 50px;
+            font-size: 1.5rem;
+            background: var(--color-primary);
+            color: var(--color-dark);
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.2s ease, background-color 0.2s ease;
+        }
+
+        .code-button:hover {
+            background: var(--color-secondary);
+            transform: scale(1.05);
+        }
+
+        .code-error {
+            color: #ff4a4a;
+            height: 20px;
+            margin-top: 1rem;
+            font-weight: 600;
+            transition: opacity 0.3s ease;
+            opacity: 0;
+        }
+
+        .code-error.active {
+            opacity: 1;
+            animation: shake 0.5s;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-5px); }
+            40%, 80% { transform: translateX(5px); }
+        }
+
+        /* Main View y Envelope View comparten el fondo */
+        #main.view, #envelope-view.view {
+            background: linear-gradient(135deg, #ffd700, #ff8c42, #ffb6c1);
+            background-size: 400% 400%;
+            animation: gradient-flow 15s ease infinite;
+        }
+
+        @keyframes gradient-flow {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        .garden {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .sunflower {
+            position: absolute;
+            opacity: 0;
+            transform: scale(0.2) rotate(0deg);
+            animation: grow-in 1.5s cubic-bezier(0.68, -0.55, 0.27, 1.55) forwards;
+            filter: drop-shadow(0 0 5px rgba(255, 255, 0, 0.5));
+        }
+
+        .sunflower.rotating {
+            animation: grow-in 1.5s cubic-bezier(0.68, -0.55, 0.27, 1.55) forwards, float-and-rotate 20s linear infinite;
+        }
+
+        @keyframes grow-in {
+            0% { opacity: 0; transform: scale(0) rotate(0deg); }
+            100% { opacity: 1; transform: scale(1) rotate(0deg); }
+        }
+
+        @keyframes float-and-rotate {
+            0% { transform: translate(0, 0) rotate(0deg) scale(1); }
+            25% { transform: translate(10px, -5px) rotate(5deg) scale(1.05); }
+            50% { transform: translate(0, 0) rotate(0deg) scale(1); }
+            75% { transform: translate(-10px, 5px) rotate(-5deg) scale(0.95); }
+            100% { transform: translate(0, 0) rotate(0deg) scale(1); }
+        }
+
+        .center-content {
+            z-index: 3;
+            text-align: center;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            opacity: 0;
+            animation: pulse-in 2s ease-out 3s forwards;
+        }
+
+        .love-text {
+            font-size: clamp(2rem, 8vw, 4rem);
+            font-weight: 600;
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+            letter-spacing: 3px;
+            background: linear-gradient(45deg, #fff, #ffe066, #fff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .tap-message {
+            font-size: 1rem;
+            letter-spacing: 1px;
+            text-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+            animation: subtle-pulse 2s infinite;
+        }
+
+        @keyframes pulse-in {
+            0% { opacity: 0; transform: scale(0.8); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        @keyframes subtle-pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        /* Envelope View */
+        #envelope-view {
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            pointer-events: auto;
+        }
+
+        .envelope-container {
+            position: relative;
+            width: clamp(250px, 80vw, 400px);
+            height: clamp(350px, 80vh, 600px); /* Aumento de la altura del sobre */
+            perspective: 1000px;
+            z-index: 2;
+        }
+
+        .envelope {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-color: var(--color-envelope);
+            border-radius: 10px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+            transform-style: preserve-3d;
+            transition: transform 1s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+            cursor: pointer;
+        }
+
+        .envelope-front {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            background-color: var(--color-envelope);
+            border-radius: 10px;
+            z-index: 2;
+        }
+
+        .envelope-flap {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 50%;
+            background-color: var(--color-envelope);
+            border-radius: 0 0 50px 50px / 0 0 10px 10px;
+            transform-origin: top;
+            transform: rotateX(0deg);
+            transition: transform 0.8s ease-in-out;
+            z-index: 3;
+        }
+
+        .envelope.open .envelope-flap {
+            transform: rotateX(-180deg);
+        }
+        
+        .letter {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 90%;
+            height: 90%;
+            background-color: var(--color-paper);
+            color: var(--color-paper-text);
+            border-radius: 5px;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.1);
+            padding: 20px;
+            font-size: clamp(0.9rem, 4vw, 1.2rem);
+            text-align: center;
+            line-height: 1.6;
+            opacity: 0;
+            transform: translate(-50%, -50%) translateY(50px);
+            transition: all 1s ease-in-out 0.5s;
+            z-index: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-style: italic;
+        }
+
+        .envelope.open .letter {
+            opacity: 1;
+            transform: translate(-50%, -50%) translateY(-20px);
+            z-index: 4;
+        }
+        
+        .letter-content {
+            white-space: pre-wrap;
+            line-height: 1.6;
+            font-family: 'Times New Roman', serif;
+        }
+
+        .letter-content::before {
+            content: "Para mi girasol, mi amor, mi todo...";
+            font-size: 1.5em;
+            font-weight: 600;
+            display: block;
+            margin-bottom: 1.5rem;
+            color: var(--color-accent);
+        }
+
+        /* Mensaje final al abrir el sobre */
+        .final-message {
+            position: absolute;
+            bottom: 20%; /* Posicionado más abajo para no chocar con la carta */
+            opacity: 0;
+            z-index: 5;
+            text-align: center;
+            cursor: pointer;
+            transition: opacity 1s ease-in-out;
+            pointer-events: none; /* Inicialmente no es clickeable */
+        }
+        
+        .final-message.visible {
+            opacity: 1;
+            pointer-events: auto; /* Se vuelve clickeable */
+        }
+
+        .final-message span {
+            display: block;
+            font-size: clamp(1rem, 4vw, 2rem);
+            font-weight: 600;
+            text-shadow: 0 0 10px rgba(0,0,0,0.5);
+            animation: subtle-pulse 2s infinite;
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <section id="gate" class="view">
+            <canvas id="gate-canvas" aria-hidden="true"></canvas>
+            <div class="gate-content">
+                <h1 class="gate-title">Ingresa el código secreto</h1>
+                <form id="code-form" autocomplete="off" aria-label="Formulario de acceso">
+                    <input
+                        id="code-input"
+                        class="code-input"
+                        type="password"
+                        inputmode="numeric"
+                        pattern="[0-9]*"
+                        maxlength="4"
+                        placeholder="••••"
+                        aria-label="Código de 4 cifras"
+                        required
+                    />
+                    <button class="code-button" type="submit" aria-label="Entrar">→</button>
+                </form>
+                <p id="code-error" class="code-error" aria-live="assertive">Código incorrecto</p>
+            </div>
+        </section>
+
+        <section id="main" class="view hidden" aria-hidden="true">
+            <div id="garden" class="garden"></div>
+            <div id="center-content" class="center-content">
+                <h2 class="love-text">Eres mi girasol</h2>
+                <p class="tap-message">Toca la pantalla para abrir un regalo</p>
+            </div>
+        </section>
+
+        <section id="envelope-view" class="view hidden" aria-hidden="true">
+            <div id="garden-envelope" class="garden"></div>
+            <div class="envelope-container">
+                <div id="envelope" class="envelope">
+                    <div class="envelope-flap"></div>
+                    <div class="envelope-front"></div>
+                    <div class="letter" aria-live="polite">
+                        <p class="letter-content">
+                            Te amo mi Mari hermosa,
+                            <br>Eres la luz de mis días.
+                            <br>Mi corazón siempre es tuyo.
+                            <br>Con todo mi amor,
+                            <br>Tu eterno admirador
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div id="final-message" class="final-message">
+                <span>Toca aquí para volver a empezar</span>
+                <span style="font-size: clamp(1.2rem, 5vw, 2.5rem); margin-top: 10px;">Te quiero</span>
+            </div>
+        </section>
+
+        <template id="sunflower-template">
+            <svg xmlns="http://www.w3.org/2000/svg" width="140" height="140" viewBox="0 0 140 140" role="img" aria-label="Girasol">
+                <defs>
+                    <radialGradient id="sfGlow" cx="50%" cy="50%" r="60%">
+                        <stop offset="0%" stop-color="rgba(255,240,150,0.9)"/>
+                        <stop offset="100%" stop-color="rgba(255,200,80,0)"/>
+                    </radialGradient>
+                </defs>
+                <g transform="translate(70,70)">
+                    <circle r="70" fill="url(#sfGlow)"></circle>
+                    <g id="petals">
+                        <g fill="#F7B500"><path d="M0,-55 C10,-45 10,-20 0,0 C-10,-20 -10,-45 0,-55" /></g>
+                        <g fill="#FFC233" transform="rotate(22.5)"><path d="M0,-55 C10,-45 10,-20 0,0 C-10,-20 -10,-45 0,-55"/></g>
+                        <g fill="#F7B500" transform="rotate(45)"><path d="M0,-55 C10,-45 10,-20 0,0 C-10,-20 -10,-45 0,-55"/></g>
+                        <g fill="#FFC233" transform="rotate(67.5)"><path d="M0,-55 C10,-45 10,-20 0,0 C-10,-20 -10,-45 0,-55"/></g>
+                        <g fill="#F7B500" transform="rotate(90)"><path d="M0,-55 C10,-45 10,-20 0,0 C-10,-20 -10,-45 0,-55"/></g>
+                        <g fill="#FFC233" transform="rotate(112.5)"><path d="M0,-55 C10,-45 10,-20 0,0 C-10,-20 -10,-45 0,-55"/></g>
+                        <g fill="#F7B500" transform="rotate(135)"><path d="M0,-55 C10,-45 10,-20 0,0 C-10,-20 -10,-45 0,-55"/></g>
+                        <g fill="#FFC233" transform="rotate(157.5)"><path d="M0,-55 C10,-45 10,-20 0,0 C-10,-20 -10,-45 0,-55"/></g>
+                        <g fill="#F7B500" transform="rotate(180)"><path d="M0,-55 C10,-45 10,-20 0,0 C-10,-20 -10,-45 0,-55"/></g>
+                        <g fill="#FFC233" transform="rotate(202.5)"><path d="M0,-55 C10,-45 10,-20 0,0 C-10,-20 -10,-45 0,-55"/></g>
+                        <g fill="#F7B500" transform="rotate(225)"><path d="M0,-55 C10,-45 10,-20 0,0 C-10,-20 -10,-45 0,-55"/></g>
+                        <g fill="#FFC233" transform="rotate(247.5)"><path d="M0,-55 C10,-45 10,-20 0,0 C-10,-20 -10,-45 0,-55"/></g>
+                        <g fill="#F7B500" transform="rotate(270)"><path d="M0,-55 C10,-45 10,-20 0,0 C-10,-20 -10,-45 0,-55"/></g>
+                        <g fill="#FFC233" transform="rotate(292.5)"><path d="M0,-55 C10,-45 10,-20 0,0 C-10,-20 -10,-45 0,-55"/></g>
+                        <g fill="#F7B500" transform="rotate(315)"><path d="M0,-55 C10,-45 10,-20 0,0 C-10,-20 -10,-45 0,-55"/></g>
+                        <g fill="#FFC233" transform="rotate(337.5)"><path d="M0,-55 C10,-45 10,-20 0,0 C-10,-20 -10,-45 0,-55"/></g>
+                    </g>
+                    <circle r="20" fill="#5A3A1A"></circle>
+                    <circle r="14" fill="#6B4625"></circle>
+                    <circle r="6" fill="#2C1A0C"></circle>
+                </g>
+            </svg>
+        </template>
+    </main>
+    <script>
+        const password = "0623";
+
+        // Elementos del DOM
+        const gateView = document.getElementById("gate");
+        const mainView = document.getElementById("main");
+        const envelopeView = document.getElementById("envelope-view");
+        const codeInput = document.getElementById("code-input");
+        const codeForm = document.getElementById("code-form");
+        const codeError = document.getElementById("code-error");
+        const garden = document.getElementById("garden");
+        const gardenEnvelope = document.getElementById("garden-envelope");
+        const sunflowerTemplate = document.getElementById("sunflower-template");
+        const centerContent = document.getElementById("center-content");
+        const envelope = document.getElementById("envelope");
+        const finalMessage = document.getElementById("final-message"); // Nuevo mensaje final
+
+        // Transición de la puerta
+        codeForm.addEventListener("submit", (e) => {
+            e.preventDefault();
+            if (codeInput.value === password) {
+                codeError.classList.remove("active");
+                gateView.classList.add("hidden");
+                mainView.classList.remove("hidden");
+                startMainAnimations();
+            } else {
+                codeError.classList.add("active");
+            }
+        });
+
+        // Transición de la vista principal a la vista del sobre
+        centerContent.addEventListener("click", () => {
+            if (!mainView.classList.contains("hidden")) {
+                mainView.classList.add("hidden");
+                envelopeView.classList.remove("hidden");
+                createSunflowersForEnvelope();
+            }
+        });
+
+        // Abrir el sobre y mostrar el mensaje final
+        envelope.addEventListener("click", () => {
+            if (!envelope.classList.contains("open")) {
+                envelope.classList.add("open");
+                setTimeout(() => {
+                    finalMessage.classList.add("visible");
+                }, 3000); // Aparece 3 segundos después de abrir el sobre
+            }
+        });
+
+        // Evento para regresar a la página inicial
+        finalMessage.addEventListener("click", () => {
+            location.reload(); // Recarga la página para volver al inicio
+        });
+
+        // Genera flores con posición aleatoria
+        const createSunflower = (targetContainer) => {
+            const newSunflower = sunflowerTemplate.content.cloneNode(true);
+            const svgElement = newSunflower.querySelector('svg');
+            
+            const centerX = window.innerWidth / 2;
+            const centerY = window.innerHeight / 2;
+            const exclusionRadius = Math.min(centerX, centerY) * 0.4;
+
+            let finalX, finalY;
+            do {
+                finalX = Math.random() * (window.innerWidth - 140);
+                finalY = Math.random() * (window.innerHeight - 140);
+            } while (Math.sqrt(Math.pow((finalX + 70) - centerX, 2) + Math.pow((finalY + 70) - centerY, 2)) < exclusionRadius);
+
+            svgElement.style.left = `${finalX}px`;
+            svgElement.style.top = `${finalY}px`;
+            svgElement.style.position = 'absolute';
+            svgElement.classList.add('sunflower', 'rotating');
+
+            targetContainer.appendChild(svgElement);
+        };
+
+        const startMainAnimations = () => {
+            const flowerCount = 10;
+            let count = 0;
+            const interval = setInterval(() => {
+                createSunflower(garden);
+                count++;
+                if (count >= flowerCount) {
+                    clearInterval(interval);
+                }
+            }, 800);
+            startCanvasParticles();
+        };
+
+        const createSunflowersForEnvelope = () => {
+            while (garden.firstChild) {
+                garden.removeChild(garden.firstChild);
+            }
+            const flowerCount = 10;
+            let count = 0;
+            const interval = setInterval(() => {
+                createSunflower(gardenEnvelope);
+                count++;
+                if (count >= flowerCount) {
+                    clearInterval(interval);
+                }
+            }, 800);
+        };
+
+        // Animación de partículas de fondo en la página de acceso (Canvas)
+        const canvas = document.getElementById('gate-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        const numParticles = 80;
+
+        const resizeCanvas = () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        };
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 2 + 1;
+                this.speedX = Math.random() * 0.5 - 0.25;
+                this.speedY = Math.random() * 0.5 - 0.25;
+                this.color = `rgba(255, 255, 255, ${Math.random() * 0.5 + 0.1})`;
+            }
+
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+
+                if (this.x > canvas.width || this.x < 0) this.speedX *= -1;
+                if (this.y > canvas.height || this.y < 0) this.speedY *= -1;
+            }
+
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        const initParticles = () => {
+            particles = [];
+            for (let i = 0; i < numParticles; i++) {
+                particles.push(new Particle());
+            }
+        };
+
+        const animateParticles = () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let i = 0; i < particles.length; i++) {
+                particles[i].update();
+                particles[i].draw();
+            }
+            requestAnimationFrame(animateParticles);
+        };
+
+        const startCanvasParticles = () => {
+            resizeCanvas();
+            initParticles();
+            animateParticles();
+        };
+
+        // Inicio
+        window.addEventListener('load', startCanvasParticles);
+        window.addEventListener('resize', resizeCanvas);
+    </script>
+</body>
+</html>
